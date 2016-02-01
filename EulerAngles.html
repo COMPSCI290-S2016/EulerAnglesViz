@@ -1,0 +1,206 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--External Libraries!-->
+<!--<script type="text/javascript" src="js/gl-matrix.js"></script>!-->
+<script type="text/javascript" src = "GLEAT/js/gl-matrix-min.js"></script>
+<script type="text/javascript" src="GLEAT/js/webgl-utils.js"></script>
+<script type="text/javascript" src="GLEAT/js/webgl-debug.js"></script>
+<script type="text/javascript" src="GLEAT/js/numeric-1.2.6.min.js"></script>
+<script type="text/javascript" src="GLEAT/js/jquery-1.11.1.min.js"></script>
+
+<!--Our Scripts!-->
+<script src="GLEAT/Geometry/PolyMesh.js"></script>
+<script src="GLEAT/Geometry/Primitives3D.js"></script>
+<script src="GLEAT/Geometry/Cameras3D.js"></script>
+<script src="GLEAT/Viewers/Shaders.js"></script>
+<script src="GLEAT/Viewers/SimpleMeshCanvas.js"></script>
+<script src="EulerAngles.js"></script>
+</head>
+
+<body>
+<h1>Euler Angles Gimbal Visualization</h1>
+<h2>By <a href = "http://www.ctralie.com">Chris Tralie</a> for <a href = "http://www.ctralie.com/Teaching/COMPSCI290/">COMPSCI 290</a>: 3D Digital Geometry</h2>
+
+Special thanks to 3dregenerator for the <a href = "http://tf3dm.com/3d-model/airbus-a380-27378.html">Airbus A380 Model</a>
+<h3>Directions</h3>
+<ul>
+<li>Manipulate the sliders to change roll/pitch/yaw.  It is also possible to input your own angles and hit the "set" button to update them</li>
+<li>For an animation which does linear interpolation between two sets of Euler angles, choose an initial yaw/pitch/roll next to "orientation1" in the animation menu to the right, as well as a final orientation next to "orientation 2."  You can also automatically fill in the angles corresponding to the current slider positions by clicking "set from current."</li>
+<li>Click the "animate" button to perform linear interpolation between orientation 1 and orientation 2</li>
+<li>Click the "display gimbals" checkbox to toggle displaying of the gimbals.  This may make it easier to view the animation</li>
+<li>To view the gimbals from a different point of view, left click and drag your mouse.  To zoom, right click and drag.  To translate, center click and drag</li>
+</ul>
+
+<table><tr><td>
+<table border = "1" cellpadding = "5">
+<tr><td colspan = "4">
+<canvas id="MainGLCanvas" style="border: none;" width="650" height="600"></canvas>
+</td></tr>
+<tr><td bgcolor = "black"><font color = "#00FF00"><b>Yaw</b></font></td>
+<td>
+<input type="range" id="yawSlider" min = "0" max = "1000" value = "0" step = "1" style="width:450px">
+</td><td><input type="text" id="yawTxt" size="1"></input></td><td><button type="button" id = "yawButton" onclick="callYawSet()">SET</button></td></tr>
+
+<tr><td bgcolor = "black"><font color = "cyan"><b>Pitch</b></font></td>
+<td>
+<input type="range" id="pitchSlider" min = "0" max = "1000" value = "0" step = "1" style="width:450px">
+</td><td><input type="text" id="pitchTxt" size="1"></input></td><td><button type="button" id = "pitchButton" onclick="callPitchSet()">SET</button></td></tr>
+
+
+<tr><td bgcolor = "black"><font color = "red"><b>Roll</b></font></td>
+<td>
+<input type="range" id="rollSlider" min = "0" max = "1000" value = "0" step = "1" style="width:450px">
+</td><td><input type="text" id="rollTxt" size="1"></input></td><td><button type="button" id = "rollButton" onclick="callRollSet()">SET</button></td></tr>
+</table>
+</td>
+
+<td>
+<h1>Animation Menu</h1>
+<table>
+<tr><td>Display Gimbals</td><td><input type="checkbox" id="displayGimbalsCheckbox"/></td></tr>
+</table>
+
+<table border = "1">
+<tr><td></td><td>Yaw</td><td>Pitch</td><td>Roll</td></tr>
+<tr><td>Orientation 1<BR><button type="button" id = "orientation1FromCurrentButton" onclick="callOrientation1SetCurrent()">SET FROM CURRENT</button></td><td><input type="text" id="yaw1" size="1"></input></td><td><input type="text" id="pitch1" size="1"></input></td><td><input type="text" id="roll1" size="1"></input></td></tr>
+<tr><td>Orientation 2<BR><button type="button" id = "orientation2FromCurrentButton" onclick="callOrientation2SetCurrent()">SET FROM CURRENT</button></td><td><input type="text" id="yaw2" size="1"></input></td><td><input type="text" id="pitch2" size="1"></input></td><td><input type="text" id="roll2" size="1"></input></td></tr>
+</table><BR>
+<button type="button" id = "animateButton" onclick="doAnimation()">ANIMATE</button>
+
+
+</td></tr></table>
+
+<script>
+	$('body').on('contextmenu', '#MainGLCanvas', function(e){ return false; }); //Need this to disable the menu that pops up on right clicking
+	var glcanvas = document.getElementById("MainGLCanvas");
+	GimbalCanvas(glcanvas);//Add fields to glcanvas that help with rendering
+	glcanvas.mesh.loadFile("Airbusa380.off");
+	glcanvas.initGimbals();
+	
+	
+	var displayGimbalsCheckbox = document.getElementById('displayGimbalsCheckbox');
+    displayGimbalsCheckbox.addEventListener('change', function(e) {
+        glcanvas.displayGimbals = displayGimbalsCheckbox.checked;
+        requestAnimFrame(glcanvas.repaint);
+    });
+    displayGimbalsCheckbox.checked = true;
+	
+	//Yaw stuff
+	var yawSlider = document.getElementById('yawSlider');
+	var yawTxt = document.getElementById('yawTxt');
+    yawSlider.addEventListener('input', function(e) {
+        glcanvas.yawAngle = 2*Math.PI*yawSlider.value/1000.0;
+        yawTxt.value = "" + (glcanvas.yawAngle*180.0/Math.PI).toFixed(1);
+        requestAnimFrame(glcanvas.repaint);
+    });
+    function callYawSet() {
+        glcanvas.yawAngle = Math.PI*parseFloat(yawTxt.value)/180.0;
+        yawSlider.value = glcanvas.yawAngle*1000/(2*Math.PI);
+        requestAnimFrame(glcanvas.repaint);
+    }
+    
+    //Pitch stuff
+	var pitchSlider = document.getElementById('pitchSlider');
+	var pitchTxt = document.getElementById('pitchTxt');
+    pitchSlider.addEventListener('input', function(e) {
+        glcanvas.pitchAngle = 2*Math.PI*pitchSlider.value/1000.0;
+        pitchTxt.value = "" + (glcanvas.pitchAngle*180.0/Math.PI).toFixed(1);
+        requestAnimFrame(glcanvas.repaint);
+    });
+    function callPitchSet() {
+        glcanvas.pitchAngle = Math.PI*parseFloat(pitchTxt.value)/180.0;
+        pitchSlider.value = glcanvas.pitchAngle*1000/(2*Math.PI);
+        requestAnimFrame(glcanvas.repaint);
+    }
+    
+    //Roll stuff
+	var rollSlider = document.getElementById('rollSlider');
+	var rollTxt = document.getElementById('rollTxt');
+    rollSlider.addEventListener('input', function(e) {
+        glcanvas.rollAngle = 2*Math.PI*rollSlider.value/1000.0;
+        rollTxt.value = "" + (glcanvas.rollAngle*180.0/Math.PI).toFixed(1);
+        requestAnimFrame(glcanvas.repaint);
+    });
+    function callRollSet() {
+        glcanvas.rollAngle = Math.PI*parseFloat(rollTxt.value)/180.0;
+        rollSlider.value = glcanvas.rollAngle*1000/(2*Math.PI);
+        requestAnimFrame(glcanvas.repaint);
+    }
+    requestAnimFrame(glcanvas.repaint);
+    
+    
+    //Put some initial values in the textboxes and sliders
+    yawTxt.value = "0";
+    callYawSet();
+    pitchTxt.value = "0";
+    callPitchSet();
+    rollTxt.value = "0";
+    callRollSet();
+    
+    //Animation functions
+    var yaw1 = document.getElementById('yaw1');
+    var pitch1 = document.getElementById('pitch1');
+    var roll1 = document.getElementById('roll1');
+    var yaw2 = document.getElementById('yaw2');
+    var pitch2 = document.getElementById('pitch2');
+    var roll2 = document.getElementById('roll2');
+    function callOrientation1SetCurrent() {
+        yaw1.value = yawTxt.value;
+        pitch1.value = pitchTxt.value;
+        roll1.value = rollTxt.value;
+    }
+    function callOrientation2SetCurrent() {
+        yaw2.value = yawTxt.value;
+        pitch2.value = pitchTxt.value;
+        roll2.value = rollTxt.value;
+    }
+    
+    function doInterpAnimationStep() {
+        var currTime = (new Date()).getTime();
+        var dT = (currTime - startTime) / 1000.0;
+        if (dT > totalTime) {
+            animating = false;
+            return;
+        }
+        dT = dT/totalTime;
+        
+        glcanvas.yawAngle = (1-dT)*y1 + dT*y2;
+        yawTxt.value = "" + (glcanvas.yawAngle*180.0/Math.PI).toFixed(1);
+        yawSlider.value = glcanvas.yawAngle * 1000.0/(2*Math.PI);
+        
+        glcanvas.pitchAngle = (1-dT)*p1 + dT*p2;
+        pitchTxt.value = "" + (glcanvas.pitchAngle*180.0/Math.PI).toFixed(1);
+        pitchSlider.value = glcanvas.pitchAngle * 1000.0/(2*Math.PI);
+        
+        glcanvas.rollAngle = (1-dT)*r1 + dT*r2;
+        rollTxt.value = "" + (glcanvas.rollAngle*180.0/Math.PI).toFixed(1);
+        rollSlider.value = glcanvas.rollAngle * 1000.0/(2*Math.PI);
+        
+        glcanvas.repaint();
+        
+        requestAnimFrame(doInterpAnimationStep);
+    }
+    
+    var y1 = 0.0, p1 = 0.0, r1 = 0.0, y2 = 0.0, p2 = 0.0, r2 = 0.0;
+    var animating = false;
+    var startTime = 0;
+    var totalTime = 0;
+    function doAnimation() {
+        y1 = parseFloat(yaw1.value)*Math.PI/180;
+        p1 = parseFloat(pitch1.value)*Math.PI/180;
+        r1 = parseFloat(roll1.value)*Math.PI/180;
+        y2 = parseFloat(yaw2.value)*Math.PI/180;
+        p2 = parseFloat(pitch2.value)*Math.PI/180;
+        r2 = parseFloat(roll2.value)*Math.PI/180;
+        totalTime = (Math.abs(y1-y2) + Math.abs(p1-p2) + Math.abs(r1-r2))/(Math.PI); //1 Second for each 180 degree change
+        animating = true;
+        startTime = (new Date()).getTime();
+        requestAnimFrame(doInterpAnimationStep);
+    }
+    
+</script>
+
+</body>
+</html>
