@@ -73,7 +73,7 @@ function GimbalCanvas(glcanvas) {
             
         var rotYaw = mat4.create();
         mat4.identity(rotYaw);
-        mat4.rotateY(rotYaw, rotYaw, glcanvas.yawAngle);
+        mat4.rotateY(rotYaw, rotYaw, -glcanvas.yawAngle);
         mat4.multiply(mvMatrix, mvMatrix, rotYaw);
         if (glcanvas.displayGimbals) {
 		    glcanvas.yawgimbal.render(glcanvas.gl, colorShader, pMatrix, mvMatrix, glcanvas.colorWhite, glcanvas.light1Pos, glcanvas.light2Pos, glcanvas.ambientColor);
@@ -82,7 +82,7 @@ function GimbalCanvas(glcanvas) {
 		
         var rotPitch = mat4.create();
         mat4.identity(rotPitch);
-        mat4.rotateX(rotPitch, rotPitch, glcanvas.pitchAngle);
+        mat4.rotateX(rotPitch, rotPitch, -glcanvas.pitchAngle);
         mat4.multiply(mvMatrix, mvMatrix, rotPitch);
         if (glcanvas.displayGimbals) {
 		    glcanvas.pitchgimbal.render(glcanvas.gl, colorShader, pMatrix, mvMatrix, glcanvas.colorWhite, glcanvas.light1Pos, glcanvas.light2Pos, glcanvas.ambientColor);
@@ -91,7 +91,7 @@ function GimbalCanvas(glcanvas) {
 
 		var rotRoll = mat4.create();
 		mat4.identity(rotRoll);
-		mat4.rotateZ(rotRoll, rotRoll, glcanvas.rollAngle);
+		mat4.rotateZ(rotRoll, rotRoll, -glcanvas.rollAngle);
 		mat4.multiply(mvMatrix, mvMatrix, rotRoll);
 		if (glcanvas.displayGimbals) {
 		    glcanvas.rollgimbal.render(glcanvas.gl, colorShader, pMatrix, mvMatrix, glcanvas.colorWhite, glcanvas.light1Pos, glcanvas.light2Pos, glcanvas.ambientColor);
